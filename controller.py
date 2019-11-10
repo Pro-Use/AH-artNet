@@ -3,37 +3,46 @@ from pyartnet import ArtNetNode
 import random
 from statistics import mean, StatisticsError
 
-WHITE = [255,255,200,255]
+WHITE = [255,255,255,255]
 WHITE_DIFF = []
 for val in WHITE:
     WHITE_DIFF.append(val / 255)
+
+FADE_MOD = 0.87
+
 
 class ControllerConfig:
     def __init__(self):
         # loop = asyncio.get_event_loop()
         # loop.set_debug(True)
-        # self.node = ArtNetNode('raspberrypi.local')
-        self.node = ArtNetNode('127.0.0.1')
-        self.node.start()
+        self.nodes = {}
         self.universes = {}
         self.loop = asyncio.get_event_loop()
-        self.add_universe('master', 1, role='master')
+        self.add_universe('master', 1, role='master', ip=None, log=True)
         self.slaves = []
 
-    def add_universe(self, universe, fixtures, role='slave'):
+    def add_universe(self, universe, fixtures, ip, role='slave', log=False):
         self.universes[universe] = {}
         self.universes[universe]['cmd_queue'] = asyncio.Queue()
         self.universes[universe]['role'] = role
         self.universes[universe]['spike'] = asyncio.Event()
         self.universes[universe]['spike'].set()
         self.universes[universe]['rand_spike'] = False
+        self.universes[universe]['log'] = log
         if role == 'slave':
+            if ip in self.nodes.keys():
+                node = self.nodes[ip]
+            else:
+                node = ArtNetNode(ip, max_fps=120)
+                node.start()
             self.universes[universe]['addresses'] = fixtures * 4
-            self.universes[universe]['univ'] = self.node.add_universe(universe)
+            self.universes[universe]['univ'] = node.add_universe(universe)
             self.universes[universe]['channel'] = \
-                self.universes[universe]['univ'].add_channel(1,self.universes[universe]['addresses'])
-            self.universes[universe]['correction'] = 1
-            self.universes[universe]['correction_adj'] = []
+                self.universes[universe]['univ'].add_channel(1, self.universes[universe]['addresses'])
+
+    def log(self, universe, msg):
+        if self.universes[universe]['log']:
+            print("%s: %s" % (universe, msg))
 
     def listen(self):
 
@@ -47,52 +56,43 @@ class ControllerConfig:
                 await asyncio.sleep((start + (fade_time / 1000)) - time.time())
             elif self.universes[universe]['spike'].is_set():
                 channel = self.universes[universe]['channel']
-                try:
-                    avg = mean(self.universes[universe]['correction_adj'])
-                except StatisticsError:
-                    avg = 1
-                channel.add_fade(vals, fade_time * (self.universes[universe]['correction'] * avg))
+                channel.add_fade(vals, fade_time * FADE_MOD)
                 await channel.wait_till_fade_complete()
                 if self.universes[universe]['spike'].is_set():
                     fade_took = time.time() - start
-                    difference = (fade_time/ 1000) / fade_took
+                    difference = (fade_time / 1000) / fade_took
                     if fade_time != 0:
-                        print("U:%s ->fade time = %s, took = %s, difference = %s " %
-                              (universe, fade_time/1000, fade_took, (fade_time/1000 - fade_took)))
-                        if self.universes[universe]['correction'] == 1:
-                            self.universes[universe]['correction'] = difference
-                        else:
-                            self.universes[universe]['correction_adj'].append(difference)
-                            if len(self.universes[universe]['correction_adj']) > 20:
-                                self.universes[universe]['correction_adj'] = \
-                                    self.universes[universe]['correction_adj'][0:20]
+                        self.log(universe, "->fade time = %s, took = %s, difference = %s " %
+                                 (fade_time/1000, fade_took, (fade_time/1000 - fade_took)))
                 else:
-                    remaining = (fade_time/1000) - (time.time() - start)
-                    print("fade finished %s seconds early" % remaining)
-                    stop = time.time() + remaining
-                    await self.universes[universe]['spike'].wait()
-                    remaining = stop - time.time()
-                    if remaining > 0.1:
-                        print("Restarting fade with %s seconds remaining" % remaining)
-                        channel.add_fade(vals, (remaining * 1000) * (self.universes[universe]['correction'] * avg))
-                        await channel.wait_till_fade_complete()
-                    # await asyncio.sleep(remaining)
+                    while True:
+                        remaining = (fade_time/1000) - (time.time() - start)
+                        self.log(universe, "fade finished %s seconds early" % remaining)
+                        stop = time.time() + remaining
+                        await self.universes[universe]['spike'].wait()
+                        remaining = stop - time.time()
+                        if remaining > 0.1:
+                            self.log(universe, "Restarting fade with %s seconds remaining" % remaining)
+                            channel.add_fade(vals, (remaining * 1000) * FADE_MOD)
+                            await channel.wait_till_fade_complete()
+                            # if not self.universes[universe]['spike'].is_set():
+                            #     self.log(universe, "Fade Complete - difference %s" % ((fade_time/1000) - (time.time() - start)))
+                            #     break
+                        else:
+                            self.log(universe, "Fade Complete - difference %s" % ((fade_time/1000) - (time.time() - start)))
+                            break
+                        # await asyncio.sleep(remaining)
             else:
                 channel = self.universes[universe]['channel']
-                try:
-                    avg = mean(self.universes[universe]['correction_adj'])
-                except StatisticsError:
-                    avg = 1
                 remaining = (fade_time / 1000) - (time.time() - start)
-                print("fade finished %s seconds early" % remaining)
+                self.log(universe, "fade finished %s seconds early" % remaining)
                 stop = time.time() + remaining
                 await self.universes[universe]['spike'].wait()
                 remaining = stop - time.time()
                 if remaining > 0.1:
-                    print("Restarting fade with %s seconds remaining" % remaining)
-                    channel.add_fade(vals, (remaining * 1000) * (self.universes[universe]['correction'] * avg))
+                    self.log(universe, "Restarting fade with %s seconds remaining" % remaining)
+                    channel.add_fade(vals, (remaining * 1000) * FADE_MOD)
                     await channel.wait_till_fade_complete()
-
 
         async def fade(universe, channel, addresses, fade_to, fade_time):
             vals = list(channel.get_channel_values())
@@ -109,13 +109,13 @@ class ControllerConfig:
                 for i in range(0, addresses, 4):
                     selected_fixtures.append(i)
                 selected_fixtures = random.sample(selected_fixtures, int(len(selected_fixtures) * num_fixtures))
-                print("channels selected = %s" % selected_fixtures)
+                self.log(universe, "channels selected = %s" % selected_fixtures)
             up = True
             while cmd_queue.empty():
                 if up is True:
                     if type(fade_top) == list:
                         target = random.randrange(fade_top[0], fade_top[1])
-                        print("target = %s" % target)
+                        self.log(universe, "target = %s" % target)
                     else:
                         target = fade_top
                     if rand is True and num_fixtures != 1.0:
@@ -130,7 +130,7 @@ class ControllerConfig:
                     else:
                         target = fade_bottom
                 if type(fade_time) == list:
-                    new_fade_time = random.uniform(fade_time[0], fade_time[1])
+                    new_fade_time = random.uniform(fade_time[0], fade_time[1]) * 1000
                 else:
                     new_fade_time = fade_time
                 if role == 'slave':
@@ -146,6 +146,53 @@ class ControllerConfig:
                 if cmd_queue.empty():
                     await asyncio.sleep(hold_time / 1000)
                     up = not up
+
+        async def static_pulse(universe, channel, addresses, cmd_queue, role, static):
+            static_vals_all = [
+                [
+                    [0.055, 234], [0.055, 210], [0.055, 234], [0.055, 204], [0.02, 224],
+                    [0.055, 197], [0.055, 221], [0.055, 193], [0.055, 210], [0.055, 199]
+                ],
+                [
+                    [0.055, 224], [0.055, 160], [0.055, 221], [0.055, 193], [0.02, 210],
+                    [0.055, 151], [0.055, 234], [0.055, 210], [0.055, 234], [0.055, 197]
+                ],
+                [
+                    [0.055, 210], [0.055, 118], [0.055, 234], [0.055, 168], [0.02, 234],
+                    [0.055, 146], [0.055, 224], [0.055, 174], [0.055, 220], [0.055, 109],
+                    [0.055, 193], [0.055, 86], [0.055, 190], [0.055, 135], [0.055, 220], [0.055, 105]
+                ],
+                [
+                    [0.055, 234], [0.2, 145], [0.2, 221], [0.2, 149], [0.3, 233],
+                    [0.2, 115], [0.3, 224], [0.2, 152], [0.055, 221], [0.055, 156],
+                    [0.2, 234], [0.3, 103], [0.1255, 193],
+                ],
+                [
+                    [0.055, 223], [0.2, 167], [0.3, 248], [0.55, 138], [0.2, 234],
+                    [0.5, 110], [0.3, 245], [0.3, 129], [0.3, 226], [0.2, 145],
+                    [0.3, 245], [0.055, 137], [0.3, 229], [0.5, 166],
+                ],
+            ]
+            static_vals = static_vals_all[static]
+            for i in range(len(static_vals)):
+                static_vals[i][0] *= 1000
+            while cmd_queue.empty():
+                for next_val in static_vals:
+                    if role == 'slave':
+                        vals = list(channel.get_channel_values())
+                        for i in range(1, addresses, 4):
+                            for c in range(0, 4):
+                                vals[i + c - 1] = int(next_val[1] * WHITE_DIFF[c])
+                        if not cmd_queue.empty():
+                            break
+                        else:
+                            await wait_on_fade(vals, next_val[0], universe)
+                    else:
+                        if not cmd_queue.empty():
+                            break
+                        else:
+                            vals = [next_val[1]]
+                            await wait_on_fade(vals, next_val[0], universe, slaves=self.slaves)
 
         async def chase(universe, channel, addresses, cmd_queue,
                         fade_to, fade_bottom, fade_time, hold_time, width):
@@ -189,16 +236,15 @@ class ControllerConfig:
                             vals[f + c - 1] = int((increment * i) * WHITE_DIFF[c])
                 await wait_on_fade(vals, fade_time, universe)
 
-
         async def single_listen(universe):
-            print("U:%s ->STARTING LISTENER" % universe)
-            cmd_queue =  self.universes[universe]['cmd_queue']
-            addresses =  self.universes[universe]['addresses']
+            self.log(universe, " ->STARTING LISTENER")
+            cmd_queue = self.universes[universe]['cmd_queue']
+            addresses = self.universes[universe]['addresses']
             channel = self.universes[universe]['channel']
             role = self.universes[universe]['role']
             while True:
                 new_cmd = await cmd_queue.get()
-                print("U:%s ->cmd = %s" % (universe, new_cmd))
+                self.log(universe, " ->cmd = %s" % new_cmd)
                 # Quit
                 if new_cmd[0] == 'quit':
                     break
@@ -209,9 +255,6 @@ class ControllerConfig:
                 # Hold
                 if new_cmd[0] == 'hold':
                     self.universes[universe]['channel'].cancel_fades()
-                    # vals = list(channel.get_channel_values())
-                    # channel.add_fade(vals, 0)
-                    # await channel.wait_till_fade_complete()
                 # Fade
                 elif new_cmd[0] == 'fade':
                     fade_to = new_cmd[1]
@@ -251,13 +294,13 @@ class ControllerConfig:
                             fade_top, fade_bottom, fade_time, steps)
 
         async def master_listen():
-            print("U:master ->STARTING MASTER")
             universe = 'master'
+            self.log(universe, " ->STARTING MASTER")
             cmd_queue = self.universes[universe]['cmd_queue']
             role = self.universes[universe]['role']
             while True:
                 new_cmd = await cmd_queue.get()
-                print("U:master ->cmd = %s" % new_cmd)
+                self.log(universe, " ->cmd = %s" % new_cmd)
                 # Quit
                 if new_cmd[0] == 'quit':
                     break
@@ -276,6 +319,10 @@ class ControllerConfig:
                     fade_to = new_cmd[1]
                     fade_time = new_cmd[2]
                     await wait_on_fade([fade_to], fade_time, universe, self.slaves)
+                # static
+                elif new_cmd[0] == 'static':
+                    static = new_cmd[1]
+                    await static_pulse(universe, None, None, cmd_queue, role, static)
                 # Pulse
                 elif new_cmd[0] == 'pulse':
                     fade_top = new_cmd[1]
@@ -285,7 +332,7 @@ class ControllerConfig:
                     num_fixtures = 1.0
                     rand = False
                     await pulse(universe, None, None, cmd_queue, role,
-                        num_fixtures, rand,fade_top, fade_bottom, fade_time, hold_time)
+                        num_fixtures, rand, fade_top, fade_bottom, fade_time, hold_time)
 
         async def main():
             all_listeners = [master_listen()]
@@ -295,54 +342,58 @@ class ControllerConfig:
                     all_listeners.append(single_listen(universe))
             await asyncio.gather(*all_listeners)
 
-
         self.loop.run_until_complete(main())
 
+    def spike(self, universe, fade_to, fade_time, repeat=1):
+        if type(fade_time) != list:
+            fade_time *= 1000
 
-    def spike(self, universe, fade_to, fade_time):
-        async def spike():
-            print("starting spike")
-            self.universes[universe]['spike'].clear()
-            self.universes[universe]['channel'].cancel_fades()
-            channel = self.universes[universe]['channel']
-            addresses = self.universes[universe]['addresses']
-            try:
-                avg = mean(self.universes[universe]['correction_adj'])
-            except StatisticsError:
-                avg = 1
-            vals = list(channel.get_channel_values())
-            base = max(vals)
-            for i in range(1, addresses, 4):
-                for c in range(0,4):
-                    vals[i + c - 1] = int(fade_to * WHITE_DIFF[c])
-            channel.add_fade(vals, (fade_time / 2) * (self.universes[universe]['correction'] * avg))
-            await channel.wait_till_fade_complete()
-            for i in range(0, len(vals)):
-                vals[i] = base
-            channel.add_fade(vals, (fade_time / 2) * (self.universes[universe]['correction'] * avg))
-            await channel.wait_till_fade_complete()
-            self.universes[universe]['spike'].set()
-            print("ending spike")
+        async def spike(u):
+            self.log(u, "starting spike")
+            self.universes[u]['spike'].clear()
+            for n in range(repeat):
+                self.universes[u]['channel'].cancel_fades()
+                channel = self.universes[u]['channel']
+                addresses = self.universes[u]['addresses']
+                if type(fade_to) == list:
+                    new_fade_to = random.randint(fade_to[0], fade_to[1])
+                else:
+                    new_fade_to = fade_to
+                vals = list(channel.get_channel_values())
+                base = max(vals)
+                for i in range(1, addresses, 4):
+                    for c in range(0, 4):
+                        vals[i + c - 1] = int(new_fade_to * WHITE_DIFF[c])
+                start = time.time()
+                channel.add_fade(vals, (fade_time / 2) * FADE_MOD)
+                await channel.wait_till_fade_complete()
+                for i in range(0, len(vals)):
+                    vals[i] = base
+                channel.add_fade(vals, (fade_time / 2) * FADE_MOD)
+                await channel.wait_till_fade_complete()
+                fade_took = time.time() - start
+                self.log(u, "ending spike - took = %s, difference = %s" % (fade_took, (fade_time / 1000) - fade_took))
+            self.universes[u]['spike'].set()
 
         if universe != 'master':
-            self.loop.create_task(spike())
+            self.loop.create_task(spike(universe))
         else:
-            print("Master cannot have spike")
+            self.log(universe, "starting spike")
+            for slave in self.slaves:
+                self.loop.create_task(spike(slave))
 
     def start_rand_spike(self, universe, fade_top, fade_time, freq_min, freq_max, repeat=1):
+        fade_time *= 1000
+
         async def rand_spike():
             channel = self.universes[universe]['channel']
             new_fade_top = fade_top
             new_repeat = repeat
             while self.universes[universe]['rand_spike']:
-                new_wait  = random.uniform(freq_min, freq_max)
+                new_wait = random.uniform(freq_min, freq_max)
                 await asyncio.sleep(new_wait)
                 if self.universes[universe]['rand_spike']:
                     addresses = self.universes[universe]['addresses']
-                    try:
-                        avg = mean(self.universes[universe]['correction_adj'])
-                    except StatisticsError:
-                        avg = 1
                     old_vals = list(channel.get_channel_values())
                     if type(repeat) == list:
                         new_repeat = random.randint(repeat[0], repeat[1])
@@ -355,14 +406,14 @@ class ControllerConfig:
                                 cur_top = old_vals[i + c - 1]
                                 vals[i + c - 1] = cur_top + int(new_fade_top * WHITE_DIFF[c])
                         channel.cancel_fades()
-                        print("starting spike")
+                        self.log(universe, "starting spike")
                         start = time.time()
                         self.universes[universe]['spike'].clear()
-                        channel.add_fade(vals, (fade_time / 2) * (self.universes[universe]['correction'] * avg))
+                        channel.add_fade(vals, (fade_time / 2) * FADE_MOD)
                         await channel.wait_till_fade_complete()
-                        channel.add_fade(old_vals, (fade_time / 2) * (self.universes[universe]['correction'] * avg))
+                        channel.add_fade(vals, (fade_time / 2) * FADE_MOD)
                         await channel.wait_till_fade_complete()
-                        print("ending spike, took %s seconds" % (time.time() - start))
+                        self.log(universe, "ending spike, took %s seconds" % (time.time() - start))
                         if i < new_repeat - 1:
                             await asyncio.sleep(0.25)
                     self.universes[universe]['spike'].set()
@@ -371,7 +422,7 @@ class ControllerConfig:
             self.universes[universe]['rand_spike'] = True
             self.loop.create_task(rand_spike())
         else:
-            print("Master cannot have random spike")
+            self.log(universe, "Master cannot have random spike")
 
     def stop_rand_spike(self, universe):
         self.universes[universe]['rand_spike'] = False
@@ -393,14 +444,34 @@ class ControllerConfig:
 
         self.loop.create_task(cmd(universe))
 
+    def hold(self, universe):
+        async def cmd(u):
+            await self.universes[u]['cmd_queue'].put(['hold'])
+
+        self.loop.create_task(cmd(universe))
+
     def fade(self, universe, fade_to, fade_time, sync=False):
+        fade_time *= 1000
+
         async def cmd(u):
             await self.universes[u]['cmd_queue'].put(['fade', fade_to, fade_time, sync])
-            print("adding fade to universe %s" % universe)
+            self.log(universe, "adding fade to universe %s" % universe)
+
+        self.loop.create_task(cmd(universe))
+
+    def static(self, universe, static):
+        async def cmd(u):
+            await self.universes[u]['cmd_queue'].put(['static', static])
+            self.log(universe, "adding static %s to universe %s" % (universe, static))
 
         self.loop.create_task(cmd(universe))
 
     def pulse(self, universe, fade_top, fade_bottom, fade_time, hold_time, fixtures=1.0, rand=False):
+        if type(fade_time) != list:
+            fade_time *= 1000
+        if type(hold_time) != list:
+            hold_time *= 1000
+
         async def cmd(u):
             await self.universes[u]['cmd_queue'].put(
                 ['pulse', fade_top, fade_bottom, fade_time, hold_time, fixtures, rand])
@@ -408,12 +479,20 @@ class ControllerConfig:
         self.loop.create_task(cmd(universe))
 
     def chase(self, universe, fade_top, fade_bottom, fade_time, hold_time, width=1):
+        if type(fade_time) != list:
+            fade_time *= 1000
+        if type(hold_time) != list:
+            hold_time *= 1000
+
         async def cmd(u):
             await self.universes[u]['cmd_queue'].put(['chase', fade_top, fade_bottom, fade_time, hold_time, width])
 
         self.loop.create_task(cmd(universe))
 
     def flicker(self, universe, fade_top, fade_bottom, fade_time, steps):
+        if type(fade_time) != list:
+            fade_time *= 1000
+
         async def cmd(u):
             await self.universes[u]['cmd_queue'].put(['flicker', fade_top, fade_bottom, fade_time, steps])
 
