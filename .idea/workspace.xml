@@ -1,15 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="192c8de8-467a-47f4-8c1a-e4ce957db409" name="Default" comment="">
-      <change afterPath="$PROJECT_DIR$/old_functions.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/parse_xml.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/artNet.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/artNet.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="192c8de8-467a-47f4-8c1a-e4ce957db409" name="Default" comment="update all">
+      <change afterPath="$PROJECT_DIR$/volume_ctl.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TateSoundLight.py" beforeDir="false" afterPath="$PROJECT_DIR$/TateSoundLight.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/audio_playback.py" beforeDir="false" afterPath="$PROJECT_DIR$/audio_playback.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/controller.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -94,6 +88,14 @@
       <option name="presentableId" value="Default" />
       <updated>1570461916184</updated>
     </task>
+    <task id="LOCAL-00001" summary="update all">
+      <created>1573405604589</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1573405604589</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -116,5 +118,9 @@
     <option name="RECENTLY_FILTERED_BRANCH_GROUPS">
       <collection />
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="update all" />
+    <option name="LAST_COMMIT_MESSAGE" value="update all" />
   </component>
 </project>
