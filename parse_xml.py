@@ -2,7 +2,7 @@
 import xml.etree.ElementTree as ET
 import datetime
 
-tree = ET.parse('/Users/anne/AH-artNet/sketchnov23v1.xml')
+tree = ET.parse('sketchnov23v1.xml')
 root = tree.getroot()
 keyframes = root[0][0][0][4]
 start = 0.0
