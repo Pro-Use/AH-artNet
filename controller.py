@@ -455,6 +455,9 @@ class ControllerConfig:
 
     def hold(self, universe):
         async def cmd(u):
+            while not self.universes[u]['cmd_queue'].empty():
+                await self.universes[u]['cmd_queue'].get_nowait()
+                print("Emptying queue")
             await self.universes[u]['cmd_queue'].put(['hold'])
 
         self.loop.create_task(cmd(universe))

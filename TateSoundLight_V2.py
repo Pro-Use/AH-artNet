@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 
 AUDIO_FOLDER = "/users/anne/audio"
 FRAME_RATE = 30
-START_POS = "0:0.0"
-# START_POS = "12:10.0"
+# START_POS = "0:0.0"
+START_POS = "13:04.0"
 # START_POS = "14:53.0"
 # START_POS = "10:36.1"
 
@@ -566,6 +566,7 @@ def player_monitor():
         ['13:3.93', light_ctl.fade, {'universe': 'master', 'fade_to': 210, 'fade_time': 4.800000000000068}],
         ['13:8.73', light_ctl.fade, {'universe': 'master', 'fade_to': 72, 'fade_time': 2.966666666666697}],
         ['13:11.70', light_ctl.fade, {'universe': 'master', 'fade_to': 241, 'fade_time': 1.6999999999999318}],
+        ['13:12.70', light_ctl.hold, {'universe': 'master'}],
         ['13:13.40', light_ctl.fade, {'universe': 'master', 'fade_to': 239, 'fade_time': 12.966666666666697}],
         ['13:26.37', light_ctl.fade, {'universe': 'master', 'fade_to': 73, 'fade_time': 2.566666666666606}],
         ['13:28.93', light_ctl.fade, {'universe': 'master', 'fade_to': 236, 'fade_time': 2.0333333333334167}],
