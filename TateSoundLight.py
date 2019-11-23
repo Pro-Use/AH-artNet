@@ -11,15 +11,19 @@ START_POS = "0:0.0"
 # START_POS = "10:36.1"
 
 light_ctl = ControllerConfig()
-light_ctl.add_universe(universe=0, fixtures=100, ip="192.168.0.2", log=True)
-light_ctl.add_universe(universe=1, fixtures=100, ip="192.168.0.2")
+light_ctl.add_universe(universe=1, fixtures=100, ip="192.168.0.2", log=True)
 light_ctl.add_universe(universe=2, fixtures=100, ip="192.168.0.2")
 light_ctl.add_universe(universe=3, fixtures=100, ip="192.168.0.2")
-light_ctl.add_universe(universe=4, fixtures=100, ip="192.168.0.3")
+light_ctl.add_universe(universe=4, fixtures=100, ip="192.168.0.2")
 light_ctl.add_universe(universe=5, fixtures=100, ip="192.168.0.3")
 light_ctl.add_universe(universe=6, fixtures=100, ip="192.168.0.3")
 light_ctl.add_universe(universe=7, fixtures=100, ip="192.168.0.3")
-light_ctl.set_slaves([0, 1, 2, 3, 4, 5, 6, 7])
+light_ctl.add_universe(universe=8, fixtures=100, ip="192.168.0.3")
+light_ctl.add_universe(universe=9, fixtures=100, ip="192.168.0.4")
+light_ctl.add_universe(universe=10, fixtures=100, ip="192.168.0.4")
+light_ctl.add_universe(universe=11, fixtures=100, ip="192.168.0.5")
+light_ctl.add_universe(universe=12, fixtures=100, ip="192.168.0.6")
+light_ctl.set_slaves([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
 
 
 def convert_to_secs(time_str):
