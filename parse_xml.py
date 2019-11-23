@@ -2,7 +2,7 @@
 import xml.etree.ElementTree as ET
 import datetime
 
-tree = ET.parse('xml_from_vezer_10nov.xml')
+tree = ET.parse('/Users/anne/AH-artNet/sketchnov23v1.xml')
 root = tree.getroot()
 keyframes = root[0][0][0][4]
 start = 0.0
@@ -12,7 +12,7 @@ for keyframe in keyframes:
     fade_time = seconds - start
     timecode = datetime.timedelta(seconds=seconds)
     h, m, s = str(timecode).split(":")
-    timecode = "%s:%s" % (m, s)
+    timecode = "%s:%0.2f" % (m, float(s))
     print("['%s', light_ctl.fade, {'universe': 'master', 'fade_to': %s, 'fade_time': %s}]," %
           (timecode, keyframe[1].text, fade_time))
     start = seconds
