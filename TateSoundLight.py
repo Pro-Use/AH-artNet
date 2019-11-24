@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 AUDIO_FOLDER = "/users/anne/audio"
 FRAME_RATE = 30
-START_POS = "0:0.0"
+# START_POS = "0:0.0"
 # START_POS = "12:10.0"
 # START_POS = "14:53.0"
 # START_POS = "10:36.1"
