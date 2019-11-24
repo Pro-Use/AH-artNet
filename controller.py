@@ -8,7 +8,7 @@ for val in WHITE:
     WHITE_DIFF.append(val / 255)
 
 FADE_MOD = 0.87
-day_mode = False
+day_mode = True
 
 def daytime_adjust(fades):
     if day_mode:
