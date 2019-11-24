@@ -12,8 +12,8 @@ def set_night():
 
 
 def set_day():
-    client.send_message("/1/volume2", 0.815)
-    client.send_message("/1/volume1", 0.815)
+    client.send_message("/1/volume2", 0.83)
+    client.send_message("/1/volume1", 0.83)
 
 
 now = datetime.now()
