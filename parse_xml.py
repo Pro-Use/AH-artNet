@@ -2,7 +2,7 @@
 import xml.etree.ElementTree as ET
 import datetime
 
-tree = ET.parse('tate_site_sketch_nov_24_v2.xml')
+tree = ET.parse('tate_nov24_v3.xml')
 root = tree.getroot()
 keyframes = root[0][0][0][4]
 start = 0.0

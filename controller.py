@@ -8,9 +8,9 @@ for val in WHITE:
     WHITE_DIFF.append(val / 255)
 
 FADE_MOD = 0.87
-day_mode = True
 
-def daytime_adjust(fades):
+
+def daytime_adjust(fades, day_mode):
     if day_mode:
         for i in range(len(fades)):
             fades[i] = int(((fades[i] / 255) * 196) + 59)
@@ -26,6 +26,7 @@ class ControllerConfig:
         self.loop = asyncio.get_event_loop()
         self.add_universe('master', 1, role='master', ip=None, log=True)
         self.slaves = []
+        self.day_mode = True
 
     def add_universe(self, universe, fixtures, ip, role='slave', log=False):
         self.universes[universe] = {}
@@ -62,7 +63,7 @@ class ControllerConfig:
                     await slave_queue.put(['fade', val, fade_time])
                 await asyncio.sleep((start + (fade_time / 1000)) - time.time())
             elif self.universes[universe]['spike'].is_set():
-                vals = daytime_adjust(vals)
+                vals = daytime_adjust(vals, self.day_mode)
                 channel = self.universes[universe]['channel']
                 channel.add_fade(vals, fade_time * FADE_MOD)
                 await channel.wait_till_fade_complete()
@@ -91,7 +92,7 @@ class ControllerConfig:
                             break
                         # await asyncio.sleep(remaining)
             else:
-                vals = daytime_adjust(vals)
+                vals = daytime_adjust(vals, self.day_mode)
                 channel = self.universes[universe]['channel']
                 remaining = (fade_time / 1000) - (time.time() - start)
                 self.log(universe, "fade finished %s seconds early" % remaining)

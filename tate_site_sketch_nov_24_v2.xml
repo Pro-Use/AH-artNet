@@ -2,8 +2,33 @@
 <!-- Made by Vezér version 1.8.5 -->
 <compositions>
 	<composition>
+		<state>on</state>
+		<name>Composition 1</name>
+		<fps>30</fps>
+		<length>45300</length>
+		<bpm>120</bpm>
+		<loop>on</loop>
+		<start>30</start>
+		<end>40530</end>
+		<cues>
+			<state>on</state>
+		</cues>
 		<tracks>
 			<track>
+				<state>off</state>
+				<target>Built-in Output</target>
+				<name>Tate_Mix_0.1_Surround.wav</name>
+				<type>audio</type>
+				<filepath>/Volumes/Extreme SSD/Tate_Mix_0.1_Surround.wav</filepath>
+				<startposition>0</startposition>
+			</track>
+			<track>
+				<state>off</state>
+				<target>
+					<universe>5</universe>
+					<channels>1x400</channels>
+					<resolution>8bit</resolution>
+				</target>
 				<name>smooth moves (copy)</name>
 				<type>ArtNetValue</type>
 				<min>0</min>
