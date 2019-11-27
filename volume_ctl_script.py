@@ -7,13 +7,13 @@ client = udp_client.SimpleUDPClient("127.0.0.1", 7001)
 
 
 def set_night():
-    client.send_message("/1/volume1", 0.1)
-    client.send_message("/1/volume2", 0.1)
+    client.send_message("/1/volume1", 0.6)
+    client.send_message("/1/volume2", 0.6)
 
 
 def set_day():
-    client.send_message("/1/volume2", 0.83)
-    client.send_message("/1/volume1", 0.83)
+    client.send_message("/1/volume2", 0.848)
+    client.send_message("/1/volume1", 0.848)
 
 
 now = datetime.now()

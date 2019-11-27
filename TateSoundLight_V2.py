@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, time
 AUDIO_FOLDER = "/users/anne/audio"
 FRAME_RATE = 30
 DAY_START = time(hour=8, minute=59)
-DAY_END = time(hour=2, minute=59)
+DAY_END = time(hour=14, minute=59)
 START_POS = "0:0.0"
 # START_POS = "11:37.0"
 # START_POS = "14:53.0"
